@@ -1,1 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sprint Report Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f3ff; color: #1a1a1a; min-height: 100vh; }
 
+  header { background: #534AB7; color: white; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 20px; font-weight: 600; }
+  header span { font-size: 13px; opacity: 0.75; }
+
+  .container { max-width: 860px; margin: 28px auto; padding: 0 16px 60px; }
+
+  .card { background: white; border: 1px solid #e8e6f9; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #7F77DD; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #EEEDFE; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .grid5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label { font-size: 12px; font-weight: 500; color: #5F5E5A; }
+
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    width: 100%; padding: 8px 11px; font-size: 13px; font-family: inherit;
+    border: 1px solid #d8d6ed; border-radius: 8px; background: white; color: #1a1a1a;
+    transition: border-color .15s;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #7F77DD; box-shadow: 0 0 0 3px #EEEDFE; }
+  textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+
+  .member-header { display: grid; grid-template-columns: 1fr 80px 80px 80px 36px; gap: 8px; margin-bottom: 4px; }
+  .member-header span { font-size: 11px; color: #888780; text-align: center; }
+  .member-header span:first-child { text-align: left; }
+  .member-row { display: grid; grid-template-columns: 1fr 80px 80px 80px 36px; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .remove-btn { background: none; border: none; cursor: pointer; color: #A32D2D; font-size: 20px; line-height: 1; padding: 0; border-radius: 4px; }
+  .remove-btn:hover { background: #FCEBEB; }
+  .add-member-btn { font-size: 13px; color: #534AB7; background: none; border: none; cursor: pointer; padding: 4px 0; font-weight: 500; }
+  .add-member-btn:hover { text-decoration: underline; }
+
+  .generate-btn {
+    width: 100%; padding: 14px; font-size: 15px; font-weight: 600;
+    background: #534AB7; color: white; border: none; border-radius: 10px;
+    cursor: pointer; transition: background .15s, transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .generate-btn:hover { background: #3C3489; }
+  .generate-btn:active { transform: scale(0.99); }
+  .generate-btn:disabled { background: #AFA9EC; cursor: not-allowed; }
+
+  .status { text-align: center; font-size: 13px; color: #5F5E5A; margin-top: 10px; min-height: 20px; }
+  .status.success { color: #0F6E56; font-weight: 500; }
+  .status.error { color: #A32D2D; }
+
+  .progress-wrap { background: #EEEDFE; border-radius: 99px; height: 6px; margin: 6px 0 2px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; background: #534AB7; transition: width .3s; }
+
+  .tip { font-size: 12px; color: #888780; margin-top: 6px; font-style: italic; }
+
+  @media(max-width:600px) {
+    .member-header, .member-row { grid-template-columns: 1fr 60px 60px 60px 30px; gap: 5px; }
+    header h1 { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sprint Report Generator</h1>
+  <span>by Scrum Master AI Tool</span>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">Sprint details</div>
+    <div class="grid2">
+      <div class="field"><label>Sprint name / number</label><input type="text" id="f_sprintName" placeholder="e.g. Sprint 42"/></div>
+      <div class="field"><label>PI name</label><input type="text" id="f_piName" placeholder="e.g. PI-3 (Q2 2025)"/></div>
+      <div class="field"><label>Team name</label><input type="text" id="f_teamName" placeholder="e.g. Phoenix Squad"/></div>
+      <div class="field"><label>Sprint goal</label><input type="text" id="f_goal" placeholder="e.g. Launch payment module"/></div>
+      <div class="field"><label>Start date</label><input type="date" id="f_start"/></div>
+      <div class="field"><label>End date</label><input type="date" id="f_end"/></div>
+      <div class="field"><label>Goal status</label>
+        <select id="f_goalStatus">
+          <option>Achieved</option>
+          <option>Partially achieved</option>
+          <option>Not achieved</option>
+        </select>
+      </div>
+      <div class="field"><label>Retrospective notes</label><textarea id="f_retro" placeholder="Key wins, blockers, action items..."></textarea></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Story points</div>
+    <div class="grid3">
+      <div class="field"><label>Planned SP</label><input type="number" id="f_spPlan" placeholder="84" min="0"/></div>
+      <div class="field"><label>Completed SP</label><input type="number" id="f_spDone" placeholder="76" min="0"/></div>
+      <div class="field"><label>Carried over SP</label><input type="number" id="f_spCarry" placeholder="8" min="0"/></div>
+    </div>
+    <div class="progress-wrap" id="spBar"><div class="progress-fill" id="spFill" style="width:0%"></div></div>
+    <div class="tip" id="spTip">Enter planned and completed SP to see completion rate</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Task breakdown</div>
+    <div class="grid3">
+      <div class="field"><label>Completed</label><input type="number" id="f_tDone" placeholder="38" min="0"/></div>
+      <div class="field"><label>In progress</label><input type="number" id="f_tWip" placeholder="4" min="0"/></div>
+      <div class="field"><label>Blocked</label><input type="number" id="f_tBlock" placeholder="2" min="0"/></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">PI tracking</div>
+    <div class="grid2">
+      <div class="field"><label>Tasks committed in PI</label><input type="number" id="f_piCommit" placeholder="130" min="0"/></div>
+      <div class="field"><label>Tasks completed from PI</label><input type="number" id="f_piDone" placeholder="104" min="0"/></div>
+      <div class="field"><label>Tasks outside PI (pre-planned)</label><input type="number" id="f_piOut" placeholder="18" min="0"/></div>
+      <div class="field"><label>Tasks added mid-sprint</label><input type="number" id="f_midAdd" placeholder="7" min="0"/></div>
+      <div class="field"><label>Tasks removed mid-sprint</label><input type="number" id="f_midRemove" placeholder="3" min="0"/></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Bugs & defects</div>
+    <div class="grid3">
+      <div class="field"><label>Reported</label><input type="number" id="f_bugRep" placeholder="11" min="0"/></div>
+      <div class="field"><label>Resolved</label><input type="number" id="f_bugRes" placeholder="9" min="0"/></div>
+      <div class="field"><label>Carried over</label><input type="number" id="f_bugPend" placeholder="2" min="0"/></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Velocity & burndown</div>
+    <div class="grid2">
+      <div class="field"><label>Sprint velocity (SP)</label><input type="number" id="f_vel" placeholder="76" min="0"/></div>
+      <div class="field"><label>Avg velocity — last 3 sprints</label><input type="number" id="f_avgVel" placeholder="71" min="0"/></div>
+      <div class="field"><label>Burndown status</label>
+        <select id="f_burn">
+          <option>On track</option>
+          <option>Slightly behind</option>
+          <option>Significantly behind</option>
+          <option>Ahead of schedule</option>
+        </select>
+      </div>
+      <div class="field"><label>Burndown notes</label><textarea id="f_burnNotes" placeholder="Deviations or explanations..."></textarea></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Team members & contributions</div>
+    <div class="member-header">
+      <span>Name</span><span>SP done</span><span>Tasks</span><span>Bugs fixed</span><span></span>
+    </div>
+    <div id="memberRows"></div>
+    <button class="add-member-btn" onclick="addMember()">+ Add member</button>
+  </div>
+
+  <button class="generate-btn" id="genBtn" onclick="generatePDF()">
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+    Generate & Download PDF Report
+  </button>
+  <div class="status" id="status"></div>
+
+</div>
+
+<script>
+let mc = 0;
+
+function addMember(name='', sp='', tasks='', bugs='') {
+  mc++;
+  const id = mc;
+  const row = document.createElement('div');
+  row.className = 'member-row';
+  row.id = 'member_' + id;
+  row.innerHTML = `
+    <input type="text" placeholder="Full name" value="${name}"/>
+    <input type="number" placeholder="0" min="0" value="${sp}" style="text-align:center"/>
+    <input type="number" placeholder="0" min="0" value="${tasks}" style="text-align:center"/>
+    <input type="number" placeholder="0" min="0" value="${bugs}" style="text-align:center"/>
+    <button class="remove-btn" onclick="document.getElementById('member_${id}').remove()" title="Remove">×</button>
+  `;
+  document.getElementById('memberRows').appendChild(row);
+}
+
+// Default 3 members
+addMember(); addMember(); addMember();
+
+// Live SP progress bar
+function updateBar() {
+  const plan = parseInt(document.getElementById('f_spPlan').value) || 0;
+  const done = parseInt(document.getElementById('f_spDone').value) || 0;
+  const pct = plan > 0 ? Math.round(done / plan * 100) : 0;
+  document.getElementById('spFill').style.width = Math.min(pct, 100) + '%';
+  document.getElementById('spFill').style.background = pct >= 80 ? '#0F6E56' : pct >= 50 ? '#854F0B' : '#A32D2D';
+  document.getElementById('spTip').textContent = plan > 0
+    ? `Completion rate: ${pct}% (${done} of ${plan} SP)`
+    : 'Enter planned and completed SP to see completion rate';
+}
+document.getElementById('f_spPlan').addEventListener('input', updateBar);
+document.getElementById('f_spDone').addEventListener('input', updateBar);
+
+function gv(id) { return document.getElementById(id).value.trim(); }
+function gn(id) { return parseInt(document.getElementById(id).value) || 0; }
+function pct(a, b) { return b > 0 ? Math.round(a / b * 100) : 0; }
+
+function getMembers() {
+  const members = [];
+  document.querySelectorAll('.member-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    if (inputs[0].value.trim()) {
+      members.push({
+        name: inputs[0].value.trim(),
+        sp: parseInt(inputs[1].value) || 0,
+        tasks: parseInt(inputs[2].value) || 0,
+        bugs: parseInt(inputs[3].value) || 0
+      });
+    }
+  });
+  return members;
+}
+
+function generatePDF() {
+  const btn = document.getElementById('genBtn');
+  const status = document.getElementById('status');
+  status.className = 'status';
+
+  const d = {
+    sprintName: gv('f_sprintName') || 'Sprint Report',
+    piName: gv('f_piName'),
+    teamName: gv('f_teamName'),
+    goal: gv('f_goal'),
+    start: gv('f_start'),
+    end: gv('f_end'),
+    goalStatus: gv('f_goalStatus'),
+    retro: gv('f_retro'),
+    spPlan: gn('f_spPlan'), spDone: gn('f_spDone'), spCarry: gn('f_spCarry'),
+    tDone: gn('f_tDone'), tWip: gn('f_tWip'), tBlock: gn('f_tBlock'),
+    piCommit: gn('f_piCommit'), piDone: gn('f_piDone'), piOut: gn('f_piOut'),
+    midAdd: gn('f_midAdd'), midRemove: gn('f_midRemove'),
+    bugRep: gn('f_bugRep'), bugRes: gn('f_bugRes'), bugPend: gn('f_bugPend'),
+    vel: gn('f_vel'), avgVel: gn('f_avgVel'),
+    burn: gv('f_burn'), burnNotes: gv('f_burnNotes'),
+    members: getMembers()
+  };
+
+  btn.disabled = true;
+  status.textContent = 'Building your PDF...';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, PH = 297, M = 15, TW = 180;
+    let y = M;
+
+    const C = {
+      purple: [83,74,183], purpleL: [238,237,254], purpleM: [127,119,221],
+      teal: [15,110,86], tealL: [225,245,238],
+      blue: [24,95,165], blueL: [230,241,251],
+      amber: [133,79,11], amberL: [250,238,218],
+      red: [163,45,45], redL: [252,235,235],
+      green: [59,109,17], greenL: [234,243,222],
+      gray: [95,94,90], grayL: [241,239,232], grayM: [180,178,169],
+      text: [26,26,26], muted: [107,107,107], white: [255,255,255]
+    };
+
+    const sf = c => doc.setFillColor(...c);
+    const sd = c => doc.setDrawColor(...c);
+    const st = c => doc.setTextColor(...c);
+
+    function newPage() { doc.addPage(); y = 34; }
+    function checkY(n = 20) { if (y + n > PH - 16) newPage(); }
+
+    function drawHeader() {
+      sf(C.purple); doc.rect(0, 0, W, 28, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(17); st(C.white);
+      doc.text(d.sprintName, M, 13);
+      const meta = [d.teamName, d.piName, d.start && d.end ? d.start + ' – ' + d.end : ''].filter(Boolean).join('   |   ');
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); st([200,196,246]);
+      doc.text(meta, M, 21);
+      const gs = d.goalStatus;
+      const bc = gs === 'Achieved' ? C.teal : gs === 'Partially achieved' ? C.amber : C.red;
+      const bl = gs === 'Achieved' ? C.tealL : gs === 'Partially achieved' ? C.amberL : C.redL;
+      sf(bl); doc.roundedRect(W - 53, 5, 38, 10, 2, 2, 'F');
+      st(bc); doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
+      doc.text('Goal: ' + gs, W - 34, 11.2, { align: 'center' });
+      y = 34;
+    }
+
+    function sectionTitle(title) {
+      checkY(12);
+      sf(C.grayL); doc.rect(M, y, TW, 7, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); st(C.gray);
+      doc.text(title.toUpperCase(), M + 3, y + 5);
+      y += 10;
+    }
+
+    function metricRow(items) {
+      const n = items.length, bw = TW / n, bh = 19;
+      checkY(bh + 4);
+      items.forEach((item, i) => {
+        const x = M + i * bw;
+        sf(item[3]); doc.rect(x, y, bw - 1, bh, 'F');
+        sd(C.grayM); doc.rect(x, y, bw - 1, bh, 'S');
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); st(C.muted);
+        doc.text(item[0], x + (bw-1)/2, y + 5.5, { align: 'center' });
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(15); st(item[2]);
+        doc.text(String(item[1]), x + (bw-1)/2, y + 14.5, { align: 'center' });
+      });
+      y += bh + 3;
+    }
+
+    function kvRow(label, val, alt) {
+      checkY(7);
+      if (alt) { sf([248,248,252]); doc.rect(M, y, TW, 6.5, 'F'); }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); st(C.muted);
+      doc.text(label, M + 3, y + 4.5);
+      doc.setFont('helvetica', 'bold'); st(C.text);
+      doc.text(String(val), M + TW - 2, y + 4.5, { align: 'right' });
+      y += 6.5;
+    }
+
+    function wrapText(text, maxW) {
+      if (!text) return;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); st(C.text);
+      doc.splitTextToSize(text, maxW || TW - 4).forEach(line => {
+        checkY(5); doc.text(line, M + 2, y); y += 5;
+      });
+    }
+
+    function progressBar(done, total, col) {
+      const p = pct(done, total);
+      checkY(5);
+      sf(C.grayL); doc.rect(M, y, TW, 3.5, 'F');
+      if (p > 0) { sf(col); doc.rect(M, y, TW * Math.min(p,100) / 100, 3.5, 'F'); }
+      y += 5;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); st(C.muted);
+      doc.text(`Completion: ${p}%  (${done} of ${total} SP)`, M, y); y += 5;
+    }
+
+    // ---- Build PDF ----
+    drawHeader();
+
+    // Goal banner
+    if (d.goal) {
+      checkY(14);
+      sf(C.purpleL); doc.rect(M, y, TW, 13, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); st(C.purple);
+      doc.text('Sprint goal', M + 3, y + 5.5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); st(C.text);
+      const goalLines = doc.splitTextToSize(d.goal, TW - 8);
+      goalLines.forEach((l, i) => doc.text(l, M + 3, y + 11 + i * 4.5));
+      y += 13 + Math.max(0, goalLines.length - 1) * 4.5 + 4;
+    }
+
+    sectionTitle('Story points');
+    const spP = pct(d.spDone, d.spPlan);
+    const spCol = spP >= 80 ? C.teal : spP >= 50 ? C.amber : C.red;
+    const spColL = spP >= 80 ? C.tealL : spP >= 50 ? C.amberL : C.redL;
+    metricRow([
+      ['Planned SP',   d.spPlan,  C.blue,  C.blueL],
+      ['Completed SP', d.spDone,  C.teal,  C.tealL],
+      ['Carried over', d.spCarry, C.amber, C.amberL],
+      ['Completion %', spP + '%', spCol,   spColL],
+    ]);
+    progressBar(d.spDone, d.spPlan, C.teal);
+    y += 2;
+
+    sectionTitle('Task breakdown');
+    const totalT = d.tDone + d.tWip + d.tBlock;
+    metricRow([
+      ['Completed',   d.tDone,  C.teal, C.tealL],
+      ['In progress', d.tWip,   C.blue, C.blueL],
+      ['Blocked',     d.tBlock, C.red,  C.redL],
+      ['Total tasks', totalT,   C.gray, C.grayL],
+    ]);
+    y += 2;
+
+    sectionTitle('PI tracking');
+    const net = d.midAdd - d.midRemove;
+    kvRow('Tasks committed in PI', d.piCommit, false);
+    kvRow('Tasks completed from PI', `${d.piDone} (${pct(d.piDone, d.piCommit)}%)`, true);
+    kvRow('Tasks outside PI (pre-planned)', d.piOut, false);
+    kvRow('Tasks added mid-sprint', d.midAdd, true);
+    kvRow('Tasks removed mid-sprint', d.midRemove, false);
+    kvRow('Net scope change', (net >= 0 ? '+' : '') + net + ' tasks', true);
+    y += 4;
+
+    sectionTitle('Bugs & defects');
+    const fixRate = pct(d.bugRes, d.bugRep);
+    metricRow([
+      ['Reported',  d.bugRep,       C.red,   C.redL],
+      ['Resolved',  d.bugRes,       C.teal,  C.tealL],
+      ['Pending',   d.bugPend,      C.amber, C.amberL],
+      ['Fix rate',  fixRate + '%',  C.green, C.greenL],
+    ]);
+    y += 2;
+
+    sectionTitle('Velocity & burndown');
+    const vDiff = d.vel - d.avgVel;
+    kvRow('Sprint velocity', d.vel + ' SP', false);
+    kvRow('Average velocity (last 3 sprints)', d.avgVel + ' SP', true);
+    kvRow('Velocity trend', (vDiff >= 0 ? '+' : '') + vDiff + ' SP vs average', false);
+    kvRow('Burndown status', d.burn, true);
+    y += 3;
+    if (d.burnNotes) {
+      doc.setFont('helvetica', 'oblique'); doc.setFontSize(8.5); st(C.muted);
+      doc.splitTextToSize(d.burnNotes, TW).forEach(l => { checkY(5); doc.text(l, M + 2, y); y += 5; });
+      y += 3;
+    }
+
+    if (d.members.length > 0) {
+      checkY(30);
+      sectionTitle('Team contributions');
+      const cols = [M, M+65, M+92, M+119, M+148];
+      const cws = [65, 27, 27, 29, 24];
+      sf(C.purple); doc.rect(M, y, TW, 7.5, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); st(C.white);
+      ['Member', 'SP done', 'Tasks', 'Bugs fixed', 'SP %'].forEach((h, i) => {
+        doc.text(h, cols[i] + 1, y + 5.5);
+      });
+      y += 7.5;
+      const totalSP = d.members.reduce((s, m) => s + m.sp, 0);
+      d.members.forEach((m, i) => {
+        checkY(7);
+        sf(i % 2 === 0 ? [240,238,252] : C.white); doc.rect(M, y, TW, 6.5, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); st(C.text);
+        doc.text(m.name, cols[0] + 1, y + 4.5);
+        doc.setFont('helvetica', 'normal'); st(C.muted);
+        doc.text(String(m.sp),    cols[1] + cws[1]/2, y + 4.5, { align: 'center' });
+        doc.text(String(m.tasks), cols[2] + cws[2]/2, y + 4.5, { align: 'center' });
+        st(C.red);
+        doc.text(String(m.bugs),  cols[3] + cws[3]/2, y + 4.5, { align: 'center' });
+        st(C.muted);
+        doc.text(pct(m.sp, totalSP) + '%', cols[4] + cws[4]/2, y + 4.5, { align: 'center' });
+        y += 6.5;
+      });
+      y += 6;
+    }
+
+    if (d.retro) {
+      checkY(20);
+      sectionTitle('Retrospective summary');
+      d.retro.split('\n\n').forEach(para => {
+        if (para.trim()) { wrapText(para.trim(), TW - 4); y += 3; }
+      });
+    }
+
+    // Footer bar
+    checkY(18);
+    sf(C.grayL); doc.rect(M, y, TW, 14, 'F');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); st(C.muted);
+    doc.text('Generated on ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), M + 4, y + 5.5);
+    doc.text('Scrum Master Report  |  ' + d.teamName, M + 4, y + 10.5);
+    doc.setFont('helvetica', 'bold'); st(C.purple);
+    doc.text(d.sprintName, M + TW - 2, y + 5.5, { align: 'right' });
+    if (d.piName) { doc.setFont('helvetica', 'normal'); st(C.muted); doc.text(d.piName, M + TW - 2, y + 10.5, { align: 'right' }); }
+
+    // Page numbers
+    const total = doc.getNumberOfPages();
+    for (let p = 1; p <= total; p++) {
+      doc.setPage(p);
+      sd(C.purpleM); doc.setLineWidth(0.4); doc.line(M, PH - 8, M + TW, PH - 8);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); st(C.grayM);
+      doc.text(`Page ${p} of ${total}`, W / 2, PH - 4, { align: 'center' });
+    }
+
+    const fname = (d.sprintName || 'Sprint').replace(/\s+/g, '_') + '_Report.pdf';
+    doc.save(fname);
+    status.textContent = 'PDF downloaded successfully!';
+    status.className = 'status success';
+  } catch(e) {
+    console.error(e);
+    status.textContent = 'Error generating PDF: ' + e.message;
+    status.className = 'status error';
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
